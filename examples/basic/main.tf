@@ -13,3 +13,11 @@ module "worklytics_export" {
   resource_group_name  = var.resource_group_name
   storage_account_name = var.storage_account_name
 }
+
+output "worklytics_export_container" {
+  value = module.worklytics_export.worklytics_export_container
+}
+
+output "worklytics_export_app_client_id" {
+  value = module.worklytics_export.worklytics_export_app_client_id
+}
