@@ -31,3 +31,6 @@ override.tf.json
 # Lock files belong to root modules that apply this module, not the module itself.
 .terraform.lock.hcl
 TODO*
+
+# IDE
+.idea/
