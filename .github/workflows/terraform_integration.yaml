@@ -41,18 +41,39 @@ jobs:
           terraform_wrapper: false
 
       - name: 'Pin azurerm provider version for test matrix'
+        # Overwrite providers.tf (the sole required_providers location) to pin to this
+        # matrix major. Terraform resolves the intersection with the root module's
+        # ">= 4.0" constraint. Writing into the existing file avoids a duplicate
+        # required_providers error.
         working-directory: examples/basic
         run: |
-          cat > azurerm_provider_version_test.tf << 'TFEOF'
+          cat > providers.tf <<EOF
           terraform {
+            backend "local" {
+              path = "terraform.tfstate"
+            }
+
             required_providers {
               azurerm = {
                 source  = "hashicorp/azurerm"
                 version = "${{ matrix.azurerm_provider_version }}"
               }
+              azuread = {
+                source  = "hashicorp/azuread"
+                version = ">= 2.47"
+              }
             }
           }
-          TFEOF
+
+          provider "azurerm" {
+            features {}
+            subscription_id = var.azure_subscription_id
+          }
+
+          provider "azuread" {
+            tenant_id = var.azure_tenant_id
+          }
+          EOF
 
       - name: 'Terraform init / validate'
         working-directory: examples/basic
