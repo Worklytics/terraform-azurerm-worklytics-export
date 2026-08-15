@@ -203,10 +203,11 @@ variables (private repo):
 | `AZURE_RESOURCE_GROUP_NAME` | Pre-created sandbox resource group (Owner scoped to this RG) |
 
 The CI agent SA must be able to impersonate the stand-in tenant SA
-(`w8s-azure-export-tf-ci@worklytics-ci.iam.gserviceaccount.com`). The Entra GitHub OIDC app must
-be able to create storage accounts, Entra applications, and role assignments **in the CI resource
-group** (not subscription-wide). The resource group is provisioned by `worklytics-infra`
-(`src/org-github`) and is delete-locked; workflows must not create or delete it.
+(`w8s-export-tf-ci-tenant@worklytics-ci.iam.gserviceaccount.com`, shared with GCP export CI). The
+Entra GitHub OIDC app must be able to create storage accounts, Entra applications, and role
+assignments **in the CI resource group** (not subscription-wide). The resource group is provisioned
+by `worklytics-infra` (`src/org-github`) and is delete-locked; workflows must not create or delete
+it. Expected name: `rg-w8s-tf-azure-export-ci`.
 
 (c) 2026 Worklytics, Co
 
