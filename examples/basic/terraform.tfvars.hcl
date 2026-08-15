@@ -1,5 +1,0 @@
-worklytics_tenant_id = "123456712345671234567"
-azure_tenant_id = "aaaa8888-4444-5555-6666-777777777777"
-resource_group_name = "my-resource-group"
-storage_account_name = "my-storage-account"
-resource_name_prefix = "my-worklytics-export-resources-"

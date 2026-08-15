@@ -27,3 +27,7 @@ override.tf.json
 
 # Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
 # example: *tfplan*
+
+# Lock files belong to root modules that apply this module, not the module itself.
+.terraform.lock.hcl
+TODO*

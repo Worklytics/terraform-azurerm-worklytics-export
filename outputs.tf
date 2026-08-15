@@ -1,11 +1,31 @@
-output "worklytics_export_container" {
-  value       = azurerm_storage_container.worklytics.name
-  description = "The Terraform resource created as the export container. See https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/storage_container for details."
+output "storage_account_name" {
+  value       = local.storage_account_name
+  description = "Name of the Azure storage account used as the export destination."
 }
 
-output "worklytics_export_app_client_id" {
+output "storage_account_id" {
+  value       = local.storage_account_id
+  description = "Resource ID of the Azure storage account used as the export destination."
+}
+
+output "storage_container_name" {
+  value       = local.storage_container_name
+  description = "Name of the blob container Worklytics will write exports to."
+}
+
+output "storage_container_resource_manager_id" {
+  value       = local.storage_container_resource_manager_id
+  description = "ARM resource ID of the export blob container. Useful for additional role assignments."
+}
+
+output "application_client_id" {
   value       = azuread_application.worklytics.client_id
-  description = "The Entra App for federated access to the container"
+  description = "Entra application (client) ID Worklytics uses when exchanging a Google ID token."
+}
+
+output "service_principal_object_id" {
+  value       = azuread_service_principal.worklytics.id
+  description = "Object ID of the Entra service principal granted blob access. Useful for composing extra RBAC."
 }
 
 output "todo_markdown" {
