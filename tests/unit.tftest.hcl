@@ -50,7 +50,8 @@ mock_provider "azuread" {
 
   mock_resource "azuread_service_principal" {
     defaults = {
-      id        = "00000000-0000-0000-0000-000000000002"
+      # azuread v3: .id is the Graph path; .object_id is the GUID Azure RBAC needs.
+      id        = "/servicePrincipals/00000000-0000-0000-0000-000000000002"
       object_id = "00000000-0000-0000-0000-000000000002"
       client_id = "00000000-0000-0000-0000-000000000001"
     }

@@ -122,10 +122,12 @@ resource "azuread_application_federated_identity_credential" "worklytics" {
 }
 
 # Read/write blobs in the export container (Worklytics export + overwrite).
+# azuread v3 exports .id as the Graph path (/servicePrincipals/{guid}); Azure RBAC
+# principal_id must be the object ID GUID.
 resource "azurerm_role_assignment" "role_contributor" {
   scope                            = local.storage_container_resource_manager_id
   role_definition_name             = "Storage Blob Data Contributor"
-  principal_id                     = azuread_service_principal.worklytics.id
+  principal_id                     = azuread_service_principal.worklytics.object_id
   skip_service_principal_aad_check = true
 }
 
@@ -133,7 +135,7 @@ resource "azurerm_role_assignment" "role_contributor" {
 resource "azurerm_role_assignment" "role_delegator" {
   scope                            = local.storage_account_id
   role_definition_name             = "Storage Blob Delegator"
-  principal_id                     = azuread_service_principal.worklytics.id
+  principal_id                     = azuread_service_principal.worklytics.object_id
   skip_service_principal_aad_check = true
 }
 
