@@ -128,11 +128,13 @@ variable "blob_diagnostics" {
   nullable    = true
 
   validation {
+    # try() so Terraform < 1.10 can validate when the default null object is used;
+    # those versions still evaluate both sides of || and error on null.attr.
     condition = var.blob_diagnostics == null || (
       length(compact([
-        var.blob_diagnostics.log_analytics_workspace_id,
-        var.blob_diagnostics.storage_account_id,
-        var.blob_diagnostics.eventhub_authorization_rule_id,
+        try(var.blob_diagnostics.log_analytics_workspace_id, null),
+        try(var.blob_diagnostics.storage_account_id, null),
+        try(var.blob_diagnostics.eventhub_authorization_rule_id, null),
       ])) == 1
     )
     error_message = "`blob_diagnostics` must set exactly one of log_analytics_workspace_id, storage_account_id, or eventhub_authorization_rule_id."
