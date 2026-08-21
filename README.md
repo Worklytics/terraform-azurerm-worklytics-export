@@ -14,7 +14,8 @@ configuration and adapt it to your requirements.
 ## What it provisions
 
 1. **Optional storage** — an Azure storage account and/or blob container, unless you pass existing
-   names.
+   names. Created accounts use TLS 1.2, HTTPS-only, infrastructure encryption, and `LRS` unless you
+   override replication.
 2. **Entra application + service principal** with a federated identity credential that trusts your
    Worklytics tenant's GCP service account (`issuer = https://accounts.google.com`,
    `subject = worklytics_tenant_id`).
@@ -73,6 +74,9 @@ provider "azuread" {
 | `resource_group_name` | yes | | Existing resource group for the storage account |
 | `storage_account_name` | no | `null` | Reuse this account; otherwise one is created |
 | `storage_container_name` | no | `null` | Reuse this container; otherwise one is created |
+| `account_replication_type` | no | `LRS` | Replication for a *created* account (`GRS` / `RAGRS` / `GZRS` / `RAGZRS` recommended in production) |
+| `infrastructure_encryption_enabled` | no | `true` | Double-encrypt a *created* account (set at creation only) |
+| `blob_diagnostics` | no | `null` | Azure Monitor destination for blob logs; omit to skip logging |
 | `location` | no | RG location | Region used only when creating a storage account |
 | `worklytics_tenant_sa_email` | no | `null` | SA email, documentation only |
 | `resource_name_prefix` | no | `worklytics-export-` | Prefix for created Entra / container names |
@@ -88,12 +92,22 @@ gcloud iam service-accounts describe EMAIL --format='value(uniqueId)'
 
 ## Outputs
 
-#### `storage_account_name` / `storage_account_id`
+#### `storage_account_name` / `storage_account_id` / `storage_account_primary_blob_endpoint`
 The storage account used as the export destination (created or reused).
 
 #### `storage_container_name` / `storage_container_resource_manager_id`
 The blob container Worklytics writes to. Compose with additional `azurerm_*` resources for
-retention, encryption, or extra RBAC.
+retention, extra RBAC, or a customer-managed key.
+
+#### `blob_services_resource_id` / `blob_diagnostic_setting_id`
+`blob_services_resource_id` is the ARM id of the account blob service
+(`…/blobServices/default`). Pass it as `target_resource_id` on your own
+`azurerm_monitor_diagnostic_setting` if you do not set `blob_diagnostics`.
+`blob_diagnostic_setting_id` is set only when the module creates that setting.
+
+#### `account_replication_type` / `infrastructure_encryption_enabled`
+Values for an account *created* by this module; `null` when you reuse an existing account
+(configure those on the existing account, or pass a hardened account in).
 
 #### `application_client_id`
 Entra application (client) ID. Worklytics uses this when exchanging a Google ID token for an Azure
@@ -138,6 +152,60 @@ module "worklytics-export" {
 
 If you omit only `storage_container_name`, the module creates a private container on the existing
 account.
+
+### Logging, encryption, and replication
+
+These apply only to a storage account **created** by the module. If you pass
+`storage_account_name`, configure them on that account (or compose extra resources using the
+outputs below).
+
+**Infrastructure encryption** is on by default for created accounts (`infrastructure_encryption_enabled = true`).
+It can only be set at creation.
+
+**Replication** defaults to `LRS`. For production durability use geo-redundant storage:
+
+```hcl
+module "worklytics-export" {
+  source = "Worklytics/worklytics-export/azurerm"
+  # ...
+  account_replication_type = "GRS" # or RAGRS, GZRS, RAGZRS
+}
+```
+
+**Blob logging** needs a destination you already own (Log Analytics workspace, another storage
+account, or Event Hub). It is off until you pass one:
+
+```hcl
+module "worklytics-export" {
+  source = "Worklytics/worklytics-export/azurerm"
+  # ...
+  blob_diagnostics = {
+    log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
+  }
+}
+```
+
+Or compose the diagnostic setting yourself (same destination types):
+
+```hcl
+resource "azurerm_monitor_diagnostic_setting" "export_blobs" {
+  name                       = "worklytics-export-blobs"
+  target_resource_id         = module.worklytics-export.blob_services_resource_id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
+
+  enabled_log {
+    category = "StorageRead"
+  }
+  enabled_log {
+    category = "StorageWrite"
+  }
+  enabled_log {
+    category = "StorageDelete"
+  }
+}
+```
+
+Do not send diagnostics to the export storage account itself.
 
 ### Permissions granted to Worklytics
 

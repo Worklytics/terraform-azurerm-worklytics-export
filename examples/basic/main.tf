@@ -34,3 +34,7 @@ output "application_client_id" {
 output "service_principal_object_id" {
   value = module.worklytics_export.service_principal_object_id
 }
+
+output "blob_services_resource_id" {
+  value = module.worklytics_export.blob_services_resource_id
+}

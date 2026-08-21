@@ -20,9 +20,11 @@ mock_provider "azurerm" {
 
   mock_resource "azurerm_storage_account" {
     defaults = {
-      id                    = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-worklytics-export-test/providers/Microsoft.Storage/storageAccounts/createdacct0001"
-      name                  = "createdacct0001"
-      primary_blob_endpoint = "https://createdacct0001.blob.core.windows.net/"
+      id                                = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-worklytics-export-test/providers/Microsoft.Storage/storageAccounts/createdacct0001"
+      name                              = "createdacct0001"
+      primary_blob_endpoint             = "https://createdacct0001.blob.core.windows.net/"
+      account_replication_type          = "LRS"
+      infrastructure_encryption_enabled = true
     }
   }
 
@@ -36,6 +38,12 @@ mock_provider "azurerm" {
   mock_resource "azurerm_role_assignment" {
     defaults = {
       id = "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/roleAssignments/00000000-0000-0000-0000-000000000099"
+    }
+  }
+
+  mock_resource "azurerm_monitor_diagnostic_setting" {
+    defaults = {
+      id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-worklytics-export-test/providers/Microsoft.Insights/diagnosticSettings/blob"
     }
   }
 }
@@ -108,6 +116,21 @@ run "creates_storage_when_omitted" {
   assert {
     condition     = azuread_application_federated_identity_credential.worklytics[0].issuer == "https://accounts.google.com"
     error_message = "Federated credential issuer must be Google accounts."
+  }
+
+  assert {
+    condition     = azurerm_storage_account.worklytics[0].account_replication_type == "LRS"
+    error_message = "Created accounts should default to LRS; pass account_replication_type for geo-redundancy."
+  }
+
+  assert {
+    condition     = azurerm_storage_account.worklytics[0].infrastructure_encryption_enabled == true
+    error_message = "Created storage accounts should enable infrastructure encryption by default."
+  }
+
+  assert {
+    condition     = length(azurerm_monitor_diagnostic_setting.blob) == 0
+    error_message = "Blob diagnostics must be skipped unless blob_diagnostics is set."
   }
 }
 
@@ -217,4 +240,56 @@ run "rejects_invalid_storage_container_name" {
   expect_failures = [
     var.storage_container_name,
   ]
+}
+
+run "rejects_invalid_replication_type" {
+  command = plan
+
+  variables {
+    account_replication_type = "LOCAL"
+  }
+
+  expect_failures = [
+    var.account_replication_type,
+  ]
+}
+
+run "rejects_blob_diagnostics_without_destination" {
+  command = plan
+
+  variables {
+    blob_diagnostics = {}
+  }
+
+  expect_failures = [
+    var.blob_diagnostics,
+  ]
+}
+
+run "creates_blob_diagnostics_when_destination_set" {
+  command = plan
+
+  variables {
+    blob_diagnostics = {
+      log_analytics_workspace_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-logs/providers/Microsoft.OperationalInsights/workspaces/logs"
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_monitor_diagnostic_setting.blob) == 1
+    error_message = "Blob diagnostic setting should be created when a destination is provided."
+  }
+}
+
+run "uses_grs_when_requested" {
+  command = plan
+
+  variables {
+    account_replication_type = "GRS"
+  }
+
+  assert {
+    condition     = azurerm_storage_account.worklytics[0].account_replication_type == "GRS"
+    error_message = "Created account should use the requested replication type."
+  }
 }

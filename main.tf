@@ -36,19 +36,23 @@ data "azurerm_storage_account" "existing" {
 }
 
 # trivy:ignore:AVD-AZU-0012 Public network access is required so Worklytics (GCP) can write objects.
+# trivy:ignore:AVD-AZU-0057 Blob logging is Azure Monitor diagnostics (var.blob_diagnostics); Trivy only looks for legacy queue analytics.
+# trivy:ignore:AVD-AZU-0058 LRS is the cost-conscious default; pass account_replication_type = "GRS" (or GZRS) for geo-redundancy.
+# trivy:ignore:AVD-AZU-0061 On by default via infrastructure_encryption_enabled; Trivy may not resolve the variable.
 resource "azurerm_storage_account" "worklytics" {
   count = local.create_storage_account ? 1 : 0
 
   # Globally unique, valid storage account name. Prefix is not used here because it may
   # contain hyphens and would be truncated if mixed with a uniqueness suffix.
-  name                            = "w8se${random_id.storage_account[0].hex}"
-  resource_group_name             = var.resource_group_name
-  location                        = coalesce(var.location, data.azurerm_resource_group.this.location)
-  account_tier                    = "Standard"
-  account_replication_type        = "LRS"
-  min_tls_version                 = "TLS1_2"
-  https_traffic_only_enabled      = true
-  allow_nested_items_to_be_public = false
+  name                              = "w8se${random_id.storage_account[0].hex}"
+  resource_group_name               = var.resource_group_name
+  location                          = coalesce(var.location, data.azurerm_resource_group.this.location)
+  account_tier                      = "Standard"
+  account_replication_type          = var.account_replication_type
+  infrastructure_encryption_enabled = var.infrastructure_encryption_enabled
+  min_tls_version                   = "TLS1_2"
+  https_traffic_only_enabled        = true
+  allow_nested_items_to_be_public   = false
 
   blob_properties {
     delete_retention_policy {
@@ -71,6 +75,37 @@ resource "azurerm_storage_account" "worklytics" {
 locals {
   storage_account_name = local.create_storage_account ? azurerm_storage_account.worklytics[0].name : var.storage_account_name
   storage_account_id   = local.create_storage_account ? azurerm_storage_account.worklytics[0].id : data.azurerm_storage_account.existing[0].id
+  storage_account_primary_blob_endpoint = (
+    local.create_storage_account
+    ? azurerm_storage_account.worklytics[0].primary_blob_endpoint
+    : data.azurerm_storage_account.existing[0].primary_blob_endpoint
+  )
+  blob_services_resource_id = "${local.storage_account_id}/blobServices/default"
+}
+
+# Azure Monitor logs for the blob service (the export path). Requires a customer-owned
+# destination; skipped when blob_diagnostics is null.
+resource "azurerm_monitor_diagnostic_setting" "blob" {
+  count = var.blob_diagnostics == null ? 0 : 1
+
+  name               = "${trimsuffix(var.resource_name_prefix, "-")}-blob-diagnostics"
+  target_resource_id = local.blob_services_resource_id
+
+  log_analytics_workspace_id     = try(var.blob_diagnostics.log_analytics_workspace_id, null)
+  log_analytics_destination_type = try(var.blob_diagnostics.log_analytics_workspace_id, null) == null ? null : "Dedicated"
+  storage_account_id             = try(var.blob_diagnostics.storage_account_id, null)
+  eventhub_authorization_rule_id = try(var.blob_diagnostics.eventhub_authorization_rule_id, null)
+  eventhub_name                  = try(var.blob_diagnostics.eventhub_name, null)
+
+  enabled_log {
+    category = "StorageRead"
+  }
+  enabled_log {
+    category = "StorageWrite"
+  }
+  enabled_log {
+    category = "StorageDelete"
+  }
 }
 
 resource "azurerm_storage_container" "worklytics" {

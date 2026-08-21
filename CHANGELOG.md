@@ -20,3 +20,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Maintainer release helper (`tools/release.sh`) that tags `origin/main` only after required CI
   checks pass.
 - Requires Terraform 1.3+, `azurerm` >= 4.0, and `azuread` >= 2.47.
+- Optional Azure Monitor blob diagnostics (`blob_diagnostics`), infrastructure encryption
+  (on by default for created accounts), and `account_replication_type` (default `LRS`).

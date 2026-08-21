@@ -87,6 +87,58 @@ variable "storage_container_name" {
   }
 }
 
+variable "account_replication_type" {
+  type        = string
+  description = <<-EOT
+    Replication for a storage account *created* by this module. Ignored when reusing an existing
+    account. `LRS` is the default (cost); production durability should use `GRS`, `RAGRS`,
+    `GZRS`, or `RAGZRS`. Switching between LRS/GRS/RAGRS and ZRS/GZRS/RAGZRS forces a new account.
+  EOT
+  default     = "LRS"
+
+  validation {
+    condition     = contains(["LRS", "GRS", "RAGRS", "ZRS", "GZRS", "RAGZRS"], var.account_replication_type)
+    error_message = "`account_replication_type` must be one of LRS, GRS, RAGRS, ZRS, GZRS, RAGZRS."
+  }
+}
+
+variable "infrastructure_encryption_enabled" {
+  type        = bool
+  description = <<-EOT
+    Double-encrypt a storage account *created* by this module (service + infrastructure keys).
+    Can only be set at creation; ignored when reusing an existing account. Default is `true`.
+  EOT
+  default     = true
+}
+
+variable "blob_diagnostics" {
+  type = object({
+    log_analytics_workspace_id     = optional(string)
+    storage_account_id             = optional(string)
+    eventhub_authorization_rule_id = optional(string)
+    eventhub_name                  = optional(string)
+  })
+  description = <<-EOT
+    Azure Monitor destination for blob StorageRead/Write/Delete logs. Null (default) skips
+    logging — pass a workspace, a *different* storage account, or an Event Hub you already
+    own. Do not send logs to the export account itself. When omitted, compose
+    `azurerm_monitor_diagnostic_setting` yourself using `blob_services_resource_id`.
+  EOT
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.blob_diagnostics == null || (
+      length(compact([
+        var.blob_diagnostics.log_analytics_workspace_id,
+        var.blob_diagnostics.storage_account_id,
+        var.blob_diagnostics.eventhub_authorization_rule_id,
+      ])) == 1
+    )
+    error_message = "`blob_diagnostics` must set exactly one of log_analytics_workspace_id, storage_account_id, or eventhub_authorization_rule_id."
+  }
+}
+
 variable "owners" {
   type        = set(string)
   description = "Object IDs set as owners of the Entra application created for Worklytics."
