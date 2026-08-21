@@ -7,20 +7,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - Unreleased
 
-### Added
-- Initial module to set up an Azure Blob Storage destination for exporting data from Worklytics.
-- Optional creation of a storage account and/or private blob container; existing names are reused
-  when provided.
-- Entra application, service principal, and Google → Entra federated identity credential keyed by
-  the Worklytics tenant's 21-digit GCP service account unique ID. The credential is omitted when
-  `worklytics_tenant_id` is `null` (pre-production review).
-- `Storage Blob Data Contributor` on the container and `Storage Blob Delegator` on the account.
-- Native `terraform test` unit tests (mocked providers) and a GitHub Actions integration test that
-  applies the module in Azure and round-trips a blob as the federated GCP identity.
-- Maintainer release helper (`tools/release.sh`) that tags `origin/main` only after required CI
-  checks pass.
-- Requires Terraform 1.3+, `azurerm` >= 4.0, and `azuread` >= 2.47.
-- Optional Azure Monitor blob diagnostics (`blob_diagnostics`), infrastructure encryption
-  (on by default for created accounts), and `account_replication_type` (default `LRS`).
-- Connect TODOs deep-link to production `https://app.worklytics.co/analytics/data-export/connect`
-  by default (`worklytics_host` overrides the host for a custom domain).
+Terraform module to export data from Worklytics to Azure Blob Storage. Published as
+`Worklytics/worklytics-export/azurerm`.
