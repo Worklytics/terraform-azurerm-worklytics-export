@@ -293,3 +293,61 @@ run "uses_grs_when_requested" {
     error_message = "Created account should use the requested replication type."
   }
 }
+
+run "todo_uses_production_worklytics_host" {
+  command = apply
+
+  variables {
+    todos_as_outputs       = true
+    storage_account_name   = "existingacct0001"
+    storage_container_name = "already-there"
+  }
+
+  assert {
+    condition     = strcontains(output.todo_markdown, "https://app.worklytics.co/analytics/data-export/connect?")
+    error_message = "TODO should deep-link to production app.worklytics.co /analytics/data-export/connect."
+  }
+
+  assert {
+    condition     = !strcontains(output.todo_markdown, "worklytics-dev")
+    error_message = "TODO must not deep-link to a worklytics-dev host."
+  }
+
+  assert {
+    condition     = strcontains(output.connect_url, "https://app.worklytics.co/analytics/data-export/connect?")
+    error_message = "connect_url should use the production host by default."
+  }
+}
+
+run "todo_uses_custom_worklytics_host" {
+  command = apply
+
+  variables {
+    todos_as_outputs       = true
+    worklytics_host        = "analytics.example.com"
+    storage_account_name   = "existingacct0001"
+    storage_container_name = "already-there"
+  }
+
+  assert {
+    condition     = strcontains(output.todo_markdown, "https://analytics.example.com/analytics/data-export/connect?")
+    error_message = "TODO should use worklytics_host when overridden (custom domain)."
+  }
+
+  assert {
+    condition     = !strcontains(output.todo_markdown, "https://app.worklytics.co/")
+    error_message = "Custom worklytics_host should replace the production default in TODOs."
+  }
+}
+
+run "rejects_worklytics_host_url" {
+  command = plan
+
+  variables {
+    worklytics_host = "https://app.worklytics.co"
+  }
+
+  expect_failures = [
+    var.worklytics_host,
+  ]
+}

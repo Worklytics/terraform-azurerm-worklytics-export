@@ -162,8 +162,17 @@ variable "federated_identity_issuer" {
 
 variable "worklytics_host" {
   type        = string
-  description = "Host of the Worklytics instance where the tenant resides (e.g. app.worklytics.co)."
+  description = <<-EOT
+    Hostname of the Worklytics app used in generated connect TODOs and deep-links. Defaults to
+    production (`app.worklytics.co`). Override only for a custom domain (or a non-prod instance).
+    Pass the host only — no scheme or path (the module prefixes `https://`).
+  EOT
   default     = "app.worklytics.co"
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$", var.worklytics_host))
+    error_message = "`worklytics_host` must be a hostname (e.g. app.worklytics.co), not a URL."
+  }
 }
 
 variable "todos_as_outputs" {

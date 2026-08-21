@@ -179,12 +179,22 @@ locals {
     var.worklytics_tenant_id == null ? "(not configured; pre-production)" : var.worklytics_tenant_id
   ) : "${var.worklytics_tenant_sa_email} (${var.worklytics_tenant_id})"
 
+  # Production connect flow (app.worklytics.co by default; not a *-dev host).
+  connect_url = join("", [
+    "https://${var.worklytics_host}/analytics/data-export/connect",
+    "?type=AZURE_BLOB_STORAGE",
+    "&container=${urlencode(local.storage_container_name)}",
+    "&storageAccount=${urlencode(local.storage_account_name)}",
+    "&clientId=${urlencode(azuread_application.worklytics.client_id)}",
+    "&tenantId=${urlencode(var.azure_tenant_id)}",
+  ])
+
   todo_content = <<EOT
 # Configure Data Export in Worklytics
 
 1. Ensure you're authenticated with Worklytics. Either sign-in at [https://${var.worklytics_host}](https://${var.worklytics_host})
   with your organization's SSO provider *or* request OTP link from your Worklytics support.
-2. Visit `https://${var.worklytics_host}/analytics/data-export/connect?type=AZURE_BLOB_STORAGE&container=${local.storage_container_name}&storageAccount=${local.storage_account_name}&clientId=${azuread_application.worklytics.client_id}&tenantId=${var.azure_tenant_id}`
+2. Visit `${local.connect_url}`
 3. Review any additional settings (such as the Dataset type you'd like to export) and adjust
   values as you see fit, then click "Create Data Export".
 

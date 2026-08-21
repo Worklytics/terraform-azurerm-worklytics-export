@@ -81,6 +81,7 @@ provider "azuread" {
 | `worklytics_tenant_sa_email` | no | `null` | SA email, documentation only |
 | `resource_name_prefix` | no | `worklytics-export-` | Prefix for created Entra / container names |
 | `owners` | no | `[]` | Entra object IDs set as owners of the application |
+| `worklytics_host` | no | `app.worklytics.co` | Hostname for connect TODOs / deep-links (prod by default; override for a custom domain) |
 
 Your Worklytics tenant identity is the **numeric unique ID** of the tenant's GCP service account
 (the same value used by the AWS export and Azure import modules). The SA email cannot be used as
@@ -116,6 +117,10 @@ access token.
 #### `service_principal_object_id`
 Object ID of the service principal granted blob access. Compose with additional `azurerm_role_assignment`
 resources if you use a customer-managed encryption key or extra locks.
+
+#### `connect_url`
+Deep-link to finish setup in Worklytics (`https://app.worklytics.co/analytics/data-export/connect?...`
+unless you set `worklytics_host`).
 
 #### `todo_markdown`
 Rendered when `todos_as_outputs = true`.

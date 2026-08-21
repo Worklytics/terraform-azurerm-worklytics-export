@@ -57,6 +57,11 @@ output "service_principal_object_id" {
   description = "Object ID of the Entra service principal granted blob access. Useful for composing extra RBAC."
 }
 
+output "connect_url" {
+  value       = local.connect_url
+  description = "Deep-link to create this Azure Blob export in Worklytics (production host by default)."
+}
+
 output "todo_markdown" {
   value       = var.todos_as_outputs ? local.todo_content : null
   description = "Actions that must be performed outside of Terraform (markdown format)."
