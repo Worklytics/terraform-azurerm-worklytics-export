@@ -25,6 +25,7 @@ mock_provider "azurerm" {
       primary_blob_endpoint             = "https://createdacct0001.blob.core.windows.net/"
       account_replication_type          = "LRS"
       infrastructure_encryption_enabled = true
+      shared_access_key_enabled         = false
     }
   }
 
@@ -126,6 +127,11 @@ run "creates_storage_when_omitted" {
   assert {
     condition     = azurerm_storage_account.worklytics[0].infrastructure_encryption_enabled == true
     error_message = "Created storage accounts should enable infrastructure encryption by default."
+  }
+
+  assert {
+    condition     = azurerm_storage_account.worklytics[0].shared_access_key_enabled == false
+    error_message = "Created storage accounts should disable shared access keys (Entra/WIF only)."
   }
 
   assert {

@@ -14,8 +14,8 @@ configuration and adapt it to your requirements.
 ## What it provisions
 
 1. **Optional storage** — an Azure storage account and/or blob container, unless you pass existing
-   names. Created accounts use TLS 1.2, HTTPS-only, infrastructure encryption, and `LRS` unless you
-   override replication.
+   names. Created accounts use TLS 1.2, HTTPS-only, infrastructure encryption, shared access keys
+   disabled, and `LRS` unless you override replication.
 2. **Entra application + service principal** with a federated identity credential that trusts your
    Worklytics tenant's GCP service account (`issuer = https://accounts.google.com`,
    `subject = worklytics_tenant_id`).
@@ -165,7 +165,8 @@ These apply only to a storage account **created** by the module. If you pass
 outputs below).
 
 **Infrastructure encryption** is on by default for created accounts (`infrastructure_encryption_enabled = true`).
-It can only be set at creation.
+It can only be set at creation. **Shared access keys** are disabled (`shared_access_key_enabled = false`);
+Worklytics uses Entra workload identity federation, not account keys.
 
 **Replication** defaults to `LRS`. For production durability use geo-redundant storage:
 
@@ -263,8 +264,8 @@ Unit tests live in [`tests/`](tests/) and use Terraform's native test framework 
 
 Integration tests authenticate to **Azure** (GitHub → Entra OIDC) to apply this module, and to
 **GCP** (GitHub → WIF) to impersonate the stand-in Worklytics tenant SA. The test then exchanges a
-Google ID token for an Entra token and PUTs/GETs a blob. Required GitHub secrets (public repo) or
-variables (private repo):
+Google ID token, logs in with `az --federated-token`, and uploads/downloads a blob. Required GitHub
+secrets (public repo) or variables (private repo):
 
 | Name | Purpose |
 |------|---------|
