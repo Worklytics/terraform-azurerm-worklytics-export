@@ -1,0 +1,16 @@
+# Worklytics (GCP) must reach this account over the public internet; network
+# restriction is left to consumers who can compose firewall / private endpoint
+# rules outside the module.
+AVD-AZU-0012
+
+# Blob logging is Azure Monitor diagnostics (opt-in via blob_diagnostics). Trivy
+# only looks for legacy queue Storage Analytics logging, which is not this path.
+AVD-AZU-0057
+
+# LRS is the cost-conscious default; customers pass account_replication_type
+# (GRS / RAGRS / GZRS / RAGZRS) when they want geo-redundancy.
+AVD-AZU-0058
+
+# Infrastructure encryption is on by default via the variable; keep this ignore
+# so static analysis that does not resolve defaults does not fail the scan.
+AVD-AZU-0061
