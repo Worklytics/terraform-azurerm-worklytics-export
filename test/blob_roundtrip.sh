@@ -12,18 +12,8 @@
 #
 # Prerequisites:
 #   - gcloud authenticated as an identity that can impersonate tenant_sa_email
-#   - az (Azure CLI)
+#   - curl, jq
 set -euo pipefail
-
-need() {
-  command -v "$1" >/dev/null 2>&1 || {
-    echo "error: $1 is required but not on PATH" >&2
-    exit 1
-  }
-}
-
-need az
-need gcloud
 
 TENANT_SA_EMAIL="${1:?tenant SA email required}"
 STORAGE_ACCOUNT="${2:?storage account name required}"
@@ -35,36 +25,49 @@ CI_RUN="${CI_RUN:-$(date +%Y%m%dT%H%M%S)}"
 BLOB_NAME="ci/${CI_RUN}/test.txt"
 BLOB_BODY="worklytics-export-ci ${CI_RUN}"
 AUDIENCE="api://AzureADTokenExchange"
+TOKEN_URL="https://login.microsoftonline.com/${AZURE_TENANT_ID}/oauth2/v2.0/token"
+BLOB_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER}/${BLOB_NAME}"
 
 echo "TENANT_SA_EMAIL: ${TENANT_SA_EMAIL}"
 echo "STORAGE_ACCOUNT: ${STORAGE_ACCOUNT}"
 echo "CONTAINER: ${CONTAINER}"
 echo "BLOB: ${BLOB_NAME}"
 
-# Isolated Azure CLI profile so this login does not replace the workflow's
-# azure/login session (later steps still need az as the CI service principal).
-AZURE_CONFIG_DIR="$(mktemp -d)"
-BLOB_FILE="$(mktemp)"
-DOWNLOAD_FILE="$(mktemp)"
-export AZURE_CONFIG_DIR
-trap 'rm -rf "${AZURE_CONFIG_DIR}" "${BLOB_FILE}" "${DOWNLOAD_FILE}"' EXIT
-
-printf '%s' "${BLOB_BODY}" > "${BLOB_FILE}"
-
 # Identity token whose aud claim matches the Entra federated credential audience.
 GCP_TOKEN="$(gcloud auth print-identity-token \
   --impersonate-service-account="${TENANT_SA_EMAIL}" \
   --audiences="${AUDIENCE}")"
 
+exchange_azure_token() {
+  local response access_token
+  response="$(curl -sS -X POST "${TOKEN_URL}" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-urlencode "client_id=${CLIENT_ID}" \
+    --data-urlencode "scope=https://storage.azure.com/.default" \
+    --data-urlencode "client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer" \
+    --data-urlencode "client_assertion=${GCP_TOKEN}" \
+    --data-urlencode "grant_type=client_credentials")"
+
+  access_token="$(printf '%s' "${response}" | jq -r '.access_token // empty')"
+  if [[ -z "${access_token}" || "${access_token}" == "null" ]]; then
+    echo "Failed to exchange Google ID token for an Entra access token:" >&2
+    printf '%s' "${response}" | jq -c 'del(.access_token)' >&2 || printf '%s\n' "${response}" >&2
+    return 1
+  fi
+  printf '%s' "${access_token}"
+}
+
 retry() {
   local attempt=1
   local max_attempts=12
   local delay=10
+  local output
   while (( attempt <= max_attempts )); do
-    if "$@"; then
+    if output="$("$@" 2>&1)"; then
+      printf '%s' "${output}"
       return 0
     fi
-    echo "Attempt ${attempt}/${max_attempts} failed." >&2
+    echo "Attempt ${attempt}/${max_attempts} failed: ${output}" >&2
     sleep "${delay}"
     delay=$(( delay < 40 ? delay * 2 : 40 ))
     attempt=$(( attempt + 1 ))
@@ -73,47 +76,30 @@ retry() {
   return 1
 }
 
-az_federated_login() {
-  az login --service-principal \
-    -u "${CLIENT_ID}" \
-    --tenant "${AZURE_TENANT_ID}" \
-    --federated-token "${GCP_TOKEN}" \
-    --allow-no-subscriptions \
-    --output none
-}
+echo "Exchanging Google ID token for Entra access token..."
+AZURE_TOKEN="$(retry exchange_azure_token)"
 
+# RBAC on a newly created assignment can take a minute or two to become effective.
 put_blob() {
-  az storage blob upload \
-    --account-name "${STORAGE_ACCOUNT}" \
-    --container-name "${CONTAINER}" \
-    --name "${BLOB_NAME}" \
-    --file "${BLOB_FILE}" \
-    --auth-mode login \
-    --overwrite \
-    --output none
+  curl -sS -f -X PUT "${BLOB_URL}" \
+    -H "Authorization: Bearer ${AZURE_TOKEN}" \
+    -H "x-ms-version: 2023-11-03" \
+    -H "x-ms-blob-type: BlockBlob" \
+    -H "Content-Type: text/plain" \
+    --data "${BLOB_BODY}"
 }
 
 get_blob() {
-  az storage blob download \
-    --account-name "${STORAGE_ACCOUNT}" \
-    --container-name "${CONTAINER}" \
-    --name "${BLOB_NAME}" \
-    --file "${DOWNLOAD_FILE}" \
-    --auth-mode login \
-    --no-progress \
-    --output none
+  curl -sS -f -X GET "${BLOB_URL}" \
+    -H "Authorization: Bearer ${AZURE_TOKEN}" \
+    -H "x-ms-version: 2023-11-03"
 }
 
-echo "Logging in to Azure as the federated Worklytics identity..."
-retry az_federated_login
-
-# RBAC on a newly created assignment can take a minute or two to become effective.
 echo "Writing blob as federated GCP identity..."
 retry put_blob
 
 echo "Reading blob as federated GCP identity..."
-retry get_blob
-DOWNLOADED="$(cat "${DOWNLOAD_FILE}")"
+DOWNLOADED="$(retry get_blob)"
 
 if [[ "${DOWNLOADED}" != "${BLOB_BODY}" ]]; then
   echo "Blob content mismatch." >&2

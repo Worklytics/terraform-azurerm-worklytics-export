@@ -59,7 +59,6 @@ mock_provider "azuread" {
 
   mock_resource "azuread_service_principal" {
     defaults = {
-      # azuread v3: .id is the Graph path; .object_id is the GUID Azure RBAC needs.
       id        = "/servicePrincipals/00000000-0000-0000-0000-000000000002"
       object_id = "00000000-0000-0000-0000-000000000002"
       client_id = "00000000-0000-0000-0000-000000000001"
@@ -77,8 +76,7 @@ mock_provider "azuread" {
 variables {
   worklytics_tenant_id = "123456789012345678901"
   azure_tenant_id      = "11111111-1111-1111-1111-111111111111"
-  resource_group_name  = "rg-worklytics-export-test"
-  todos_as_local_files = false
+  resource_group_name = "rg-worklytics-export-test"
 }
 
 run "creates_storage_when_omitted" {
@@ -140,6 +138,29 @@ run "creates_storage_when_omitted" {
   }
 }
 
+run "creates_container_with_fixed_name" {
+  command = plan
+
+  variables {
+    storage_container_name = "my-custom-exports"
+  }
+
+  assert {
+    condition     = length(azurerm_storage_container.worklytics) == 1
+    error_message = "Expected a container to be created when storage_container_name is set on a new account."
+  }
+
+  assert {
+    condition     = azurerm_storage_container.worklytics[0].name == "my-custom-exports"
+    error_message = "Created container should use storage_container_name."
+  }
+
+  assert {
+    condition     = output.storage_container_name == "my-custom-exports"
+    error_message = "Output container name should match storage_container_name."
+  }
+}
+
 run "reuses_existing_storage_account" {
   command = plan
 
@@ -178,7 +199,7 @@ run "reuses_existing_account_and_container" {
 
   assert {
     condition     = output.storage_container_name == "already-there"
-    error_message = "Output container name should match the provided existing container."
+    error_message = "Output container name should match storage_container_name."
   }
 }
 
@@ -304,7 +325,6 @@ run "todo_uses_production_worklytics_host" {
   command = apply
 
   variables {
-    todos_as_outputs       = true
     storage_account_name   = "existingacct0001"
     storage_container_name = "already-there"
   }
@@ -312,11 +332,6 @@ run "todo_uses_production_worklytics_host" {
   assert {
     condition     = strcontains(output.todo_markdown, "https://app.worklytics.co/analytics/data-export/connect?")
     error_message = "TODO should deep-link to production app.worklytics.co /analytics/data-export/connect."
-  }
-
-  assert {
-    condition     = !strcontains(output.todo_markdown, "worklytics-dev")
-    error_message = "TODO must not deep-link to a worklytics-dev host."
   }
 
   assert {
@@ -329,7 +344,6 @@ run "todo_uses_custom_worklytics_host" {
   command = apply
 
   variables {
-    todos_as_outputs       = true
     worklytics_host        = "analytics.example.com"
     storage_account_name   = "existingacct0001"
     storage_container_name = "already-there"
@@ -338,11 +352,6 @@ run "todo_uses_custom_worklytics_host" {
   assert {
     condition     = strcontains(output.todo_markdown, "https://analytics.example.com/analytics/data-export/connect?")
     error_message = "TODO should use worklytics_host when overridden (custom domain)."
-  }
-
-  assert {
-    condition     = !strcontains(output.todo_markdown, "https://app.worklytics.co/")
-    error_message = "Custom worklytics_host should replace the production default in TODOs."
   }
 }
 

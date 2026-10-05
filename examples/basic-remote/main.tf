@@ -2,7 +2,7 @@
 
 module "worklytics-export" {
   source  = "Worklytics/worklytics-export/azurerm"
-  version = "~> 0.1.0"
+  version = "~> 0.2.0"
 
   # numeric ID of your Worklytics Tenant SA (21-digit unique ID, not the email)
   worklytics_tenant_id = "123123123123123123123"
@@ -11,5 +11,6 @@ module "worklytics-export" {
   resource_group_name = "worklytics"
 
   # omit storage_account_name to create an account in the resource group
-  # storage_account_name = "myexistingaccount"
+  # storage_account_name   = "myexistingaccount"
+  # storage_container_name = "my-worklytics-exports" # optional; fixed container name
 }

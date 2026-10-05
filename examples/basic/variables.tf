@@ -16,12 +16,6 @@ variable "worklytics_tenant_id" {
   default     = null
 }
 
-variable "worklytics_tenant_sa_email" {
-  type        = string
-  description = "Optional email of your Worklytics tenant's GCP service account."
-  default     = null
-}
-
 variable "azure_tenant_id" {
   type        = string
   description = "The Azure tenant ID where the application will be created."
@@ -46,7 +40,7 @@ variable "storage_account_name" {
 
 variable "storage_container_name" {
   type        = string
-  description = "Existing container to reuse. If null, the module creates one."
+  description = "Exact container name to create or reuse. If null, the module uses `{resource_name_prefix}container`."
   default     = null
 }
 
@@ -56,8 +50,8 @@ variable "owners" {
   default     = []
 }
 
-variable "todos_as_local_files" {
+variable "write_todo_local_file" {
   type        = bool
-  description = "Whether to render TODOs as flat files."
+  description = "Whether to write module todo_markdown to a local markdown file in this example."
   default     = true
 }
