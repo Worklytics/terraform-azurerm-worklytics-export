@@ -18,15 +18,20 @@ Within `examples/basic/` (eg, here), create a `terraform.tfvars` file with the f
 customizing Azure Tenant ID, subscription, resource group, and Worklytics Tenant ID as needed.
 
 Omit `storage_account_name` to have the module create a storage account; set it to reuse one.
+Set `storage_container_name` for a fixed container name.
 
 ```hcl
 worklytics_tenant_id   = "123456712345671234567"
 azure_tenant_id        = "aaaa8888-4444-5555-6666-777777777777"
 azure_subscription_id  = "bbbb9999-4444-5555-6666-777777777777"
 resource_group_name    = "my-resource-group-name"
-# storage_account_name = "myexistingaccount" # optional; omit to create
-resource_name_prefix   = "my-worklytics-data-export-" # Optional
+# storage_account_name   = "myexistingaccount"     # optional; omit to create
+# storage_container_name = "my-worklytics-exports" # optional; fixed container name
+resource_name_prefix   = "my-worklytics-data-export-" # optional
 ```
+
+By default this example writes `TODO - configure export in worklytics.md` from the module's
+`todo_markdown` output. Set `write_todo_local_file = false` to skip that file.
 
 Then test the example:
 

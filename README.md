@@ -1,12 +1,12 @@
 # Worklytics Export to Azure Terraform Module
 
-[![Latest Release](https://img.shields.io/github/v/release/Worklytics/terraform-azure-worklytics-export)](https://github.com/Worklytics/terraform-azure-worklytics-export/releases/latest)
-[![tests](https://img.shields.io/github/actions/workflow/status/Worklytics/terraform-azure-worklytics-export/terraform_integration.yaml?label=tests)](https://github.com/Worklytics/terraform-azure-worklytics-export/actions?query=branch%3Amain)
+[![Latest Release](https://img.shields.io/github/v/release/Worklytics/terraform-azurerm-worklytics-export)](https://github.com/Worklytics/terraform-azurerm-worklytics-export/releases/latest)
+[![tests](https://img.shields.io/github/actions/workflow/status/Worklytics/terraform-azurerm-worklytics-export/terraform_integration.yaml?label=tests)](https://github.com/Worklytics/terraform-azurerm-worklytics-export/actions?query=branch%3Amain)
 
 This module creates infra to support exporting data from Worklytics to [Azure Blob Storage].
 
-It is intended for the [Terraform Registry](https://registry.terraform.io/modules/Worklytics/worklytics-export/azure/latest)
-(`Worklytics/worklytics-export/azure`).
+It is intended for the [Terraform Registry](https://registry.terraform.io/modules/Worklytics/worklytics-export/azurerm/latest)
+(`Worklytics/worklytics-export/azurerm`).
 
 If it does not meet your needs, feel free to directly copy the `main.tf` file into your own Terraform
 configuration and adapt it to your requirements.
@@ -29,8 +29,8 @@ to the container.
 from Terraform registry (once published):
 ```hcl
 module "worklytics-export" {
-  source  = "Worklytics/worklytics-export/azure"
-  version = "~> 0.1.0"
+  source  = "Worklytics/worklytics-export/azurerm"
+  version = "~> 0.2.0"
 
   # numeric ID of your Worklytics Tenant SA (21-digit unique ID, not the email)
   worklytics_tenant_id = "123456789012345678901"
@@ -42,7 +42,7 @@ module "worklytics-export" {
 via GitHub:
 ```hcl
 module "worklytics-export" {
-  source = "git::https://github.com/worklytics/terraform-azure-worklytics-export/?ref=v0.1.0"
+  source = "git::https://github.com/Worklytics/terraform-azurerm-worklytics-export/?ref=v0.2.0"
 
   worklytics_tenant_id = "123456789012345678901"
   azure_tenant_id      = "11111111-1111-1111-1111-111111111111"
@@ -72,15 +72,18 @@ provider "azuread" {
 | `azure_tenant_id` | yes | | Entra tenant ID (for instructions / deep-link) |
 | `resource_group_name` | yes | | Existing resource group for the storage account |
 | `storage_account_name` | no | `null` | Reuse this account; otherwise one is created |
-| `storage_container_name` | no | `null` | Reuse this container; otherwise one is created |
+| `storage_container_name` | no | `null` | Fixed container name (create or reuse); otherwise `{prefix}container` |
+| `account_replication_type` | no | `LRS` | Replication for a *created* account |
+| `infrastructure_encryption_enabled` | no | `true` | Double-encrypt a *created* account |
+| `blob_diagnostics` | no | `null` | Optional Monitor diagnostics for blob read/write/delete |
 | `location` | no | RG location | Region used only when creating a storage account |
-| `worklytics_tenant_sa_email` | no | `null` | SA email, documentation only |
-| `resource_name_prefix` | no | `worklytics-export-` | Prefix for created Entra / container names |
+| `resource_name_prefix` | no | `worklytics-export-` | Prefix for Entra names; container fallback when `storage_container_name` unset |
 | `owners` | no | `[]` | Entra object IDs set as owners of the application |
+| `worklytics_host` | no | `app.worklytics.co` | Hostname for connect TODOs / deep-links |
 
-Your Worklytics tenant identity is the **numeric unique ID** of the tenant's GCP service account
-(the same value used by the AWS export and Azure import modules). The SA email cannot be used as
-the federated credential subject. Obtain the ID from the Worklytics app, or:
+Your Worklytics tenant identity is the **numeric unique ID** of the tenant's GCP service account.
+The SA email cannot be used as the federated credential subject. Obtain the ID from the Worklytics
+app, or:
 
 ```bash
 gcloud iam service-accounts describe EMAIL --format='value(uniqueId)'
@@ -103,8 +106,9 @@ access token.
 Object ID of the service principal granted blob access. Compose with additional `azurerm_role_assignment`
 resources if you use a customer-managed encryption key or extra locks.
 
-#### `todo_markdown`
-Rendered when `todos_as_outputs = true`.
+#### `todo_markdown` / `connect_url`
+Post-apply instructions and a deep-link to finish setup in Worklytics. Write `todo_markdown` to a
+file from your root module if you want a local copy (see `examples/basic/`).
 
 ## Compatibility
 
@@ -120,19 +124,42 @@ If you find incompatibilities, please open an issue.
 
 ## Usage Tips
 
-### Existing storage account / container
+By default, the module names the blob container `{resource_name_prefix}container` (for example,
+`worklytics-export-container`). Set `storage_container_name` for an exact name or when reusing an
+existing container (see Existing storage account / container).
 
-Pass both names to skip storage creation and only grant Worklytics access:
+### Custom container name
 
 ```hcl
 module "worklytics-export" {
-  source = "Worklytics/worklytics-export/azure"
+  source = "Worklytics/worklytics-export/azurerm"
 
-  worklytics_tenant_id   = "123456789012345678901"
-  azure_tenant_id        = "11111111-1111-1111-1111-111111111111"
-  resource_group_name    = "worklytics"
-  storage_account_name   = "myexistingaccount"
-  storage_container_name = "worklytics-export"
+  worklytics_tenant_id     = "123456789012345678901"
+  azure_tenant_id          = "11111111-1111-1111-1111-111111111111"
+  resource_group_name      = "worklytics"
+  storage_container_name   = "my-company-worklytics-exports"
+}
+```
+
+The module still creates a storage account (with a generated globally unique name) unless you also
+set `storage_account_name`.
+
+### Existing storage account / container
+
+To use pre-existing storage, set `storage_account_name` and `storage_container_name` to the
+**exact** names of the account and container. Configuring the module with matching names is
+required — the module looks up the account and grants RBAC on that container without creating
+`azurerm_storage_*` resources.
+
+```hcl
+module "worklytics-export" {
+  source = "Worklytics/worklytics-export/azurerm"
+
+  worklytics_tenant_id     = "123456789012345678901"
+  azure_tenant_id          = "11111111-1111-1111-1111-111111111111"
+  resource_group_name      = "worklytics"
+  storage_account_name     = "myexistingaccount"
+  storage_container_name   = "worklytics-export"
 }
 ```
 
@@ -167,13 +194,13 @@ Registry versions are **git tags** (`vX.Y.Z`) on `main`, not GitHub Releases. Af
 `main` and CI is green:
 
 ```bash
-./tools/release.sh v0.1.0 --wait
+./tools/release.sh v0.2.0 --wait
 ```
 
 That tags the current `origin/main` commit and pushes the tag. The tag-triggered workflow creates
 the GitHub Release (notes / README badge). First-time listing on
-[registry.terraform.io](https://registry.terraform.io/modules/Worklytics/worklytics-export/azure)
-is a one-time Publish in the HashiCorp UI (`Worklytics/worklytics-export/azure`); later tags are
+[registry.terraform.io](https://registry.terraform.io/modules/Worklytics/worklytics-export/azurerm)
+is a one-time Publish in the HashiCorp UI (`Worklytics/worklytics-export/azurerm`); later tags are
 picked up by the Registry webhook.
 
 ### Tests
