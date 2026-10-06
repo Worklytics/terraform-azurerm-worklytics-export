@@ -11,10 +11,10 @@ locals {
   container_name_prefix = replace(var.resource_name_prefix, "_", "-")
 
   create_storage_account = var.storage_account_name == null
-  # A brand-new account cannot host an "existing" container; always create one in that case.
+  # Skip container creation only when reusing an account *and* a fixed container name is provided.
   create_container = var.storage_account_name == null || var.storage_container_name == null
 
-  generated_container_name = coalesce(
+  storage_container_name = coalesce(
     var.storage_container_name,
     "${local.container_name_prefix}container"
   )
@@ -89,9 +89,8 @@ locals {
 resource "azurerm_monitor_diagnostic_setting" "blob" {
   count = var.blob_diagnostics == null ? 0 : 1
 
-  name               = "${trimsuffix(var.resource_name_prefix, "-")}-blob-diagnostics"
-  target_resource_id = local.blob_services_resource_id
-
+  name                           = "${trimsuffix(var.resource_name_prefix, "-")}-blob-diagnostics"
+  target_resource_id             = local.blob_services_resource_id
   log_analytics_workspace_id     = try(var.blob_diagnostics.log_analytics_workspace_id, null)
   log_analytics_destination_type = try(var.blob_diagnostics.log_analytics_workspace_id, null) == null ? null : "Dedicated"
   storage_account_id             = try(var.blob_diagnostics.storage_account_id, null)
@@ -112,17 +111,16 @@ resource "azurerm_monitor_diagnostic_setting" "blob" {
 resource "azurerm_storage_container" "worklytics" {
   count = local.create_container ? 1 : 0
 
-  name                  = local.generated_container_name
+  name                  = local.storage_container_name
   storage_account_id    = local.storage_account_id
   container_access_type = "private"
 }
 
 locals {
-  storage_container_name = local.generated_container_name
   storage_container_resource_manager_id = (
     local.create_container
     ? azurerm_storage_container.worklytics[0].id
-    : "${local.storage_account_id}/blobServices/default/containers/${local.generated_container_name}"
+    : "${local.storage_account_id}/blobServices/default/containers/${local.storage_container_name}"
   )
 }
 
@@ -176,11 +174,6 @@ resource "azurerm_role_assignment" "role_delegator" {
 }
 
 locals {
-  tenant_identity_note = var.worklytics_tenant_sa_email == null ? (
-    var.worklytics_tenant_id == null ? "(not configured; pre-production)" : var.worklytics_tenant_id
-  ) : "${var.worklytics_tenant_sa_email} (${var.worklytics_tenant_id})"
-
-  # Production connect flow (app.worklytics.co by default; not a *-dev host).
   connect_url = join("", [
     "https://${var.worklytics_host}/analytics/data-export/connect",
     "?type=AZURE_BLOB_STORAGE",
@@ -214,13 +207,6 @@ Alternatively, you may follow the manual instructions below:
     - Storage Account: ${local.storage_account_name}
     - Client ID: ${azuread_application.worklytics.client_id}
     - Tenant ID: ${var.azure_tenant_id}
-    - Worklytics tenant identity: ${local.tenant_identity_note}
+    - Worklytics tenant identity: ${var.worklytics_tenant_id == null ? "(not configured; pre-production)" : var.worklytics_tenant_id}
 EOT
-}
-
-resource "local_file" "todo" {
-  count = var.todos_as_local_files ? 1 : 0
-
-  filename = "TODO - configure export in worklytics.md"
-  content  = local.todo_content
 }

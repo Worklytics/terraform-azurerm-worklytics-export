@@ -122,7 +122,9 @@ ensure_changelog() {
   local ver
   ver="$(bare_version)"
   [[ -f CHANGELOG.md ]] || die "CHANGELOG.md is missing"
-  # A ## [X.Y.Z] heading is enough; Keep a Changelog dates (or "- Unreleased") are optional.
+  if grep -qE "^## \[${ver}\] - Unreleased" CHANGELOG.md; then
+    die "CHANGELOG.md still lists ${ver} as Unreleased. Date that section and push to main before tagging."
+  fi
   if ! grep -qE "^## \[${ver}\]" CHANGELOG.md; then
     die "CHANGELOG.md has no ## [${ver}] section"
   fi

@@ -1,34 +1,22 @@
+# Platform-specific settings omit cloud prefixes — this module implies Azure.
+
 variable "resource_name_prefix" {
   type        = string
-  description = "Prefix to give to names of infra created by this module, where applicable."
+  description = "Prefix to give to names of infra created by this module, where applicable. When `storage_container_name` is unset, also used to generate a blob container name via `{prefix-with-hyphens}container`."
   default     = "worklytics-export-"
 }
 
 variable "worklytics_tenant_id" {
   type        = string
-  description = <<-EOT
-    Numeric unique ID of your Worklytics tenant's GCP service account (obtain from the Worklytics
-    app). This is a 21-digit value used as the subject of the Entra federated identity credential.
-    It is the same identifier used by the AWS export and Azure import modules; it is *not* the SA
-    email. Set to `null` only for pre-production review, where the Entra app is created but no
-    external identity is trusted to federate into it.
-  EOT
-  default     = null
-  nullable    = true
+  description = "Numeric ID of your Worklytics tenant's service account (obtain from Worklytics App)."
+
+  default  = null
+  nullable = true
 
   validation {
     condition     = var.worklytics_tenant_id == null || can(regex("^\\d{21}$", var.worklytics_tenant_id))
-    error_message = "`worklytics_tenant_id` must be a 21-digit numeric value (or `null` for pre-production)."
+    error_message = "`worklytics_tenant_id` must be a 21-digit numeric value (or `null`, for pre-production use case where you don't want external entity to be allowed to federate into it)."
   }
-}
-
-variable "worklytics_tenant_sa_email" {
-  type        = string
-  description = <<-EOT
-    Optional email of your Worklytics tenant's GCP service account. Used only in generated
-    instructions; federation is keyed by `worklytics_tenant_id`.
-  EOT
-  default     = null
 }
 
 variable "azure_tenant_id" {
@@ -47,8 +35,8 @@ variable "resource_group_name" {
 variable "location" {
   type        = string
   description = <<-EOT
-    Azure region for a storage account created by this module. If null, the resource group's
-    location is used. Ignored when no account is created.
+    Region for a storage account created by this module. If null, the resource group's location
+    is used. Ignored when no account is created.
   EOT
   default     = null
 }
@@ -56,8 +44,8 @@ variable "location" {
 variable "storage_account_name" {
   type        = string
   description = <<-EOT
-    Existing Azure storage account for the export destination. If null, a storage account is
-    created in `resource_group_name`.
+    Existing storage account for the export destination. If null, a storage account is created
+    in `resource_group_name`.
   EOT
   default     = null
   nullable    = true
@@ -71,9 +59,12 @@ variable "storage_account_name" {
 variable "storage_container_name" {
   type        = string
   description = <<-EOT
-    Existing blob container for the export destination. If null, a private container is created.
-    Providing both `storage_account_name` and `storage_container_name` skips storage creation;
-    the module only grants Worklytics access.
+    Exact blob container name for the export destination. When set, used instead of a name
+    derived from `resource_name_prefix`. Set when reusing an existing container (together with
+    `storage_account_name`) or when you need a specific name on a new storage account. If null,
+    a private container is created with the default `{prefix}container` name. Providing both
+    `storage_account_name` and `storage_container_name` skips container creation; the module
+    only grants Worklytics access.
   EOT
   default     = null
   nullable    = true
@@ -119,17 +110,15 @@ variable "blob_diagnostics" {
     eventhub_name                  = optional(string)
   })
   description = <<-EOT
-    Azure Monitor destination for blob StorageRead/Write/Delete logs. Null (default) skips
-    logging — pass a workspace, a *different* storage account, or an Event Hub you already
-    own. Do not send logs to the export account itself. When omitted, compose
-    `azurerm_monitor_diagnostic_setting` yourself using `blob_services_resource_id`.
+    Monitor destination for blob StorageRead/Write/Delete logs. Null (default) skips logging —
+    pass a workspace, a *different* storage account, or an Event Hub you already own. Do not send
+    logs to the export account itself. When omitted, compose `azurerm_monitor_diagnostic_setting`
+    yourself using `blob_services_resource_id`.
   EOT
   default     = null
   nullable    = true
 
   validation {
-    # try() so Terraform < 1.10 can validate when the default null object is used;
-    # those versions still evaluate both sides of || and error on null.attr.
     condition = var.blob_diagnostics == null || (
       length(compact([
         try(var.blob_diagnostics.log_analytics_workspace_id, null),
@@ -147,12 +136,14 @@ variable "owners" {
   default     = []
 }
 
+# TODO: remove in next major — sensible default covers typical Worklytics federation.
 variable "federated_identity_description" {
   type        = string
   description = "Optional description of the federated identity credential."
   default     = "Allows the Worklytics tenant GCP service account to write data exports to Azure Blob Storage."
 }
 
+# TODO: remove in next major — sensible default covers typical Worklytics federation.
 variable "federated_identity_issuer" {
   type        = string
   description = <<-EOT
@@ -164,11 +155,7 @@ variable "federated_identity_issuer" {
 
 variable "worklytics_host" {
   type        = string
-  description = <<-EOT
-    Hostname of the Worklytics app used in generated connect TODOs and deep-links. Defaults to
-    production (`app.worklytics.co`). Override only for a custom domain (or a non-prod instance).
-    Pass the host only — no scheme or path (the module prefixes `https://`).
-  EOT
+  description = "host of worklytics instance where tenant resides. (e.g. app.worklytics.co for prod; but may differ for dev/staging)"
   default     = "app.worklytics.co"
 
   validation {
@@ -177,17 +164,3 @@ variable "worklytics_host" {
   }
 }
 
-variable "todos_as_outputs" {
-  type        = bool
-  description = <<-EOT
-    Whether to render TODOs as outputs (useful if you're using Terraform Cloud/Enterprise, or
-    somewhere else where the filesystem is not readily accessible to you).
-  EOT
-  default     = false
-}
-
-variable "todos_as_local_files" {
-  type        = bool
-  description = "Whether to render TODOs as flat files."
-  default     = true
-}

@@ -1,7 +1,9 @@
 # Worklytics Export to Azure Terraform Module
 
-[![Latest Release](https://img.shields.io/github/v/release/Worklytics/terraform-azurerm-worklytics-export)](https://github.com/Worklytics/terraform-azurerm-worklytics-export/releases/latest)
-[![tests](https://img.shields.io/github/actions/workflow/status/Worklytics/terraform-azurerm-worklytics-export/terraform_integration.yaml?label=tests)](https://github.com/Worklytics/terraform-azurerm-worklytics-export/actions?query=branch%3Amain)
+<p>
+  <a href="https://github.com/Worklytics/terraform-azurerm-worklytics-export/releases/latest"><img src="https://img.shields.io/github/v/release/Worklytics/terraform-azurerm-worklytics-export" alt="Latest Release" style="display: inline-block; margin-right: 4px;"></a>
+  <a href="https://github.com/Worklytics/terraform-azurerm-worklytics-export/actions?query=branch%3Amain"><img src="https://img.shields.io/github/actions/workflow/status/Worklytics/terraform-azurerm-worklytics-export/terraform_integration.yaml?label=tests" alt="tests" style="display: inline-block;"></a>
+</p>
 
 This module creates infra to support exporting data from Worklytics to [Azure Blob Storage].
 
@@ -14,8 +16,7 @@ configuration and adapt it to your requirements.
 ## What it provisions
 
 1. **Optional storage** — an Azure storage account and/or blob container, unless you pass existing
-   names. Created accounts use TLS 1.2, HTTPS-only, infrastructure encryption, shared access keys
-   disabled, and `LRS` unless you override replication.
+   names.
 2. **Entra application + service principal** with a federated identity credential that trusts your
    Worklytics tenant's GCP service account (`issuer = https://accounts.google.com`,
    `subject = worklytics_tenant_id`).
@@ -31,7 +32,7 @@ from Terraform registry (once published):
 ```hcl
 module "worklytics-export" {
   source  = "Worklytics/worklytics-export/azurerm"
-  version = "~> 0.1.0"
+  version = "~> 0.2.0"
 
   # numeric ID of your Worklytics Tenant SA (21-digit unique ID, not the email)
   worklytics_tenant_id = "123456789012345678901"
@@ -43,7 +44,7 @@ module "worklytics-export" {
 via GitHub:
 ```hcl
 module "worklytics-export" {
-  source = "git::https://github.com/worklytics/terraform-azurerm-worklytics-export/?ref=v0.1.0"
+  source = "git::https://github.com/Worklytics/terraform-azurerm-worklytics-export/?ref=v0.2.0"
 
   worklytics_tenant_id = "123456789012345678901"
   azure_tenant_id      = "11111111-1111-1111-1111-111111111111"
@@ -67,25 +68,94 @@ provider "azuread" {
 
 ## Inputs
 
-| Name | Required | Default | Description |
-|------|----------|---------|-------------|
-| `worklytics_tenant_id` | no | `null` | 21-digit unique ID of the Worklytics tenant GCP SA; `null` skips federation (pre-prod) |
-| `azure_tenant_id` | yes | | Entra tenant ID (for instructions / deep-link) |
-| `resource_group_name` | yes | | Existing resource group for the storage account |
-| `storage_account_name` | no | `null` | Reuse this account; otherwise one is created |
-| `storage_container_name` | no | `null` | Reuse this container; otherwise one is created |
-| `account_replication_type` | no | `LRS` | Replication for a *created* account (`GRS` / `RAGRS` / `GZRS` / `RAGZRS` recommended in production) |
-| `infrastructure_encryption_enabled` | no | `true` | Double-encrypt a *created* account (set at creation only) |
-| `blob_diagnostics` | no | `null` | Azure Monitor destination for blob logs; omit to skip logging |
-| `location` | no | RG location | Region used only when creating a storage account |
-| `worklytics_tenant_sa_email` | no | `null` | SA email, documentation only |
-| `resource_name_prefix` | no | `worklytics-export-` | Prefix for created Entra / container names |
-| `owners` | no | `[]` | Entra object IDs set as owners of the application |
-| `worklytics_host` | no | `app.worklytics.co` | Hostname for connect TODOs / deep-links (prod by default; override for a custom domain) |
+<table>
+  <thead>
+    <tr>
+      <th align="left" style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Name</th>
+      <th align="left" style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Required</th>
+      <th align="left" style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Default</th>
+      <th align="left" style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>worklytics_tenant_id</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">no</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>null</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">21-digit unique ID of the Worklytics tenant GCP SA; <code>null</code> skips federation (pre-prod)</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>azure_tenant_id</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">yes</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Entra tenant ID (for instructions / deep-link)</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>resource_group_name</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">yes</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Existing resource group for the storage account</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>storage_account_name</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">no</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>null</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Reuse this account; otherwise one is created</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>storage_container_name</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">no</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>null</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Fixed container name (create or reuse); otherwise <code>{prefix}container</code></td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>account_replication_type</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">no</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>LRS</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Replication for a <em>created</em> account</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>infrastructure_encryption_enabled</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">no</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>true</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Double-encrypt a <em>created</em> account</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>blob_diagnostics</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">no</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>null</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Optional Monitor diagnostics for blob read/write/delete</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>location</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">no</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">RG location</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Region used only when creating a storage account</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>resource_name_prefix</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">no</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>worklytics-export-</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Prefix for Entra names; container fallback when <code>storage_container_name</code> unset</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>owners</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">no</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>[]</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Entra object IDs set as owners of the application</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>worklytics_host</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">no</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>app.worklytics.co</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Hostname for connect TODOs / deep-links</td>
+    </tr>
+  </tbody>
+</table>
 
-Your Worklytics tenant identity is the **numeric unique ID** of the tenant's GCP service account
-(the same value used by the AWS export and Azure import modules). The SA email cannot be used as
-the federated credential subject. Obtain the ID from the Worklytics app, or:
+Your Worklytics tenant identity is the **numeric unique ID** of the tenant's GCP service account.
+The SA email cannot be used as the federated credential subject. Obtain the ID from the Worklytics
+app, or:
 
 ```bash
 gcloud iam service-accounts describe EMAIL --format='value(uniqueId)'
@@ -93,22 +163,12 @@ gcloud iam service-accounts describe EMAIL --format='value(uniqueId)'
 
 ## Outputs
 
-#### `storage_account_name` / `storage_account_id` / `storage_account_primary_blob_endpoint`
+#### `storage_account_name` / `storage_account_id`
 The storage account used as the export destination (created or reused).
 
 #### `storage_container_name` / `storage_container_resource_manager_id`
 The blob container Worklytics writes to. Compose with additional `azurerm_*` resources for
-retention, extra RBAC, or a customer-managed key.
-
-#### `blob_services_resource_id` / `blob_diagnostic_setting_id`
-`blob_services_resource_id` is the ARM id of the account blob service
-(`…/blobServices/default`). Pass it as `target_resource_id` on your own
-`azurerm_monitor_diagnostic_setting` if you do not set `blob_diagnostics`.
-`blob_diagnostic_setting_id` is set only when the module creates that setting.
-
-#### `account_replication_type` / `infrastructure_encryption_enabled`
-Values for an account *created* by this module; `null` when you reuse an existing account
-(configure those on the existing account, or pass a hardened account in).
+retention, encryption, or extra RBAC.
 
 #### `application_client_id`
 Entra application (client) ID. Worklytics uses this when exchanging a Google ID token for an Azure
@@ -118,12 +178,9 @@ access token.
 Object ID of the service principal granted blob access. Compose with additional `azurerm_role_assignment`
 resources if you use a customer-managed encryption key or extra locks.
 
-#### `connect_url`
-Deep-link to finish setup in Worklytics (`https://app.worklytics.co/analytics/data-export/connect?...`
-unless you set `worklytics_host`).
-
-#### `todo_markdown`
-Rendered when `todos_as_outputs = true`.
+#### `todo_markdown` / `connect_url`
+Post-apply instructions and a deep-link to finish setup in Worklytics. Write `todo_markdown` to a
+file from your root module if you want a local copy (see `examples/basic/`).
 
 ## Compatibility
 
@@ -139,86 +196,71 @@ If you find incompatibilities, please open an issue.
 
 ## Usage Tips
 
-### Existing storage account / container
+By default, the module names the blob container `{resource_name_prefix}container` (for example,
+`worklytics-export-container`). Set `storage_container_name` for an exact name or when reusing an
+existing container (see Existing storage account / container).
 
-Pass both names to skip storage creation and only grant Worklytics access:
+### Custom container name
 
 ```hcl
 module "worklytics-export" {
   source = "Worklytics/worklytics-export/azurerm"
 
-  worklytics_tenant_id   = "123456789012345678901"
-  azure_tenant_id        = "11111111-1111-1111-1111-111111111111"
-  resource_group_name    = "worklytics"
-  storage_account_name   = "myexistingaccount"
-  storage_container_name = "worklytics-export"
+  worklytics_tenant_id     = "123456789012345678901"
+  azure_tenant_id          = "11111111-1111-1111-1111-111111111111"
+  resource_group_name      = "worklytics"
+  storage_container_name   = "my-company-worklytics-exports"
+}
+```
+
+The module still creates a storage account (with a generated globally unique name) unless you also
+set `storage_account_name`.
+
+### Existing storage account / container
+
+To use pre-existing storage, set `storage_account_name` and `storage_container_name` to the
+**exact** names of the account and container. Configuring the module with matching names is
+required — the module looks up the account and grants RBAC on that container without creating
+`azurerm_storage_*` resources.
+
+```hcl
+module "worklytics-export" {
+  source = "Worklytics/worklytics-export/azurerm"
+
+  worklytics_tenant_id     = "123456789012345678901"
+  azure_tenant_id          = "11111111-1111-1111-1111-111111111111"
+  resource_group_name      = "worklytics"
+  storage_account_name     = "myexistingaccount"
+  storage_container_name   = "worklytics-export"
 }
 ```
 
 If you omit only `storage_container_name`, the module creates a private container on the existing
 account.
 
-### Logging, encryption, and replication
-
-These apply only to a storage account **created** by the module. If you pass
-`storage_account_name`, configure them on that account (or compose extra resources using the
-outputs below).
-
-**Infrastructure encryption** is on by default for created accounts (`infrastructure_encryption_enabled = true`).
-It can only be set at creation. **Shared access keys** are disabled (`shared_access_key_enabled = false`);
-Worklytics uses Entra workload identity federation, not account keys.
-
-**Replication** defaults to `LRS`. For production durability use geo-redundant storage:
-
-```hcl
-module "worklytics-export" {
-  source = "Worklytics/worklytics-export/azurerm"
-  # ...
-  account_replication_type = "GRS" # or RAGRS, GZRS, RAGZRS
-}
-```
-
-**Blob logging** needs a destination you already own (Log Analytics workspace, another storage
-account, or Event Hub). It is off until you pass one:
-
-```hcl
-module "worklytics-export" {
-  source = "Worklytics/worklytics-export/azurerm"
-  # ...
-  blob_diagnostics = {
-    log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
-  }
-}
-```
-
-Or compose the diagnostic setting yourself (same destination types):
-
-```hcl
-resource "azurerm_monitor_diagnostic_setting" "export_blobs" {
-  name                       = "worklytics-export-blobs"
-  target_resource_id         = module.worklytics-export.blob_services_resource_id
-  log_analytics_workspace_id = azurerm_log_analytics_workspace.logs.id
-
-  enabled_log {
-    category = "StorageRead"
-  }
-  enabled_log {
-    category = "StorageWrite"
-  }
-  enabled_log {
-    category = "StorageDelete"
-  }
-}
-```
-
-Do not send diagnostics to the export storage account itself.
-
 ### Permissions granted to Worklytics
 
-| Role | Scope | Why |
-|------|-------|-----|
-| Storage Blob Data Contributor | container | Write/overwrite export blobs |
-| Storage Blob Delegator | storage account | User delegation keys used by Azure SDKs |
+<table>
+  <thead>
+    <tr>
+      <th align="left" style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Role</th>
+      <th align="left" style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Scope</th>
+      <th align="left" style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Storage Blob Data Contributor</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">container</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Write/overwrite export blobs</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Storage Blob Delegator</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">storage account</td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">User delegation keys used by Azure SDKs</td>
+    </tr>
+  </tbody>
+</table>
 
 The federated credential trusts Google (`accounts.google.com`) as issuer and your
 `worklytics_tenant_id` as subject, with audience `api://AzureADTokenExchange`.
@@ -241,7 +283,7 @@ Registry versions are **git tags** (`vX.Y.Z`) on `main`, not GitHub Releases. Af
 `main` and CI is green:
 
 ```bash
-./tools/release.sh v0.1.0 --wait
+./tools/release.sh v0.2.0 --wait
 ```
 
 That tags the current `origin/main` commit and pushes the tag. The tag-triggered workflow creates
@@ -252,29 +294,75 @@ picked up by the Registry webhook.
 
 ### Tests
 
-| Workflow | What it covers |
-|----------|----------------|
-| `terraform_lint.yaml` | `terraform fmt -check` |
-| `terraform_validate.yaml` | `terraform init` / `validate` on `examples/basic`, plus `terraform test` unit tests |
-| `terraform_integration.yaml` | Apply in a CI Azure subscription, then read/write a blob as the stand-in Worklytics GCP identity |
-| `terraform_security.yaml` | Trivy IaC scan |
+<table>
+  <thead>
+    <tr>
+      <th align="left" style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Workflow</th>
+      <th align="left" style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">What it covers</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>terraform_lint.yaml</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>terraform fmt -check</code></td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>terraform_validate.yaml</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>terraform init</code> / <code>validate</code> on <code>examples/basic</code>, plus <code>terraform test</code> unit tests</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>terraform_integration.yaml</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Apply in a CI Azure subscription, then read/write a blob as the stand-in Worklytics GCP identity</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>terraform_security.yaml</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Trivy IaC scan</td>
+    </tr>
+  </tbody>
+</table>
 
 Unit tests live in [`tests/`](tests/) and use Terraform's native test framework with mocked
 `azurerm` / `azuread` providers (no cloud credentials).
 
 Integration tests authenticate to **Azure** (GitHub → Entra OIDC) to apply this module, and to
 **GCP** (GitHub → WIF) to impersonate the stand-in Worklytics tenant SA. The test then exchanges a
-Google ID token, logs in with `az --federated-token`, and uploads/downloads a blob. Required GitHub
-secrets (public repo) or variables (private repo):
+Google ID token for an Entra token and PUTs/GETs a blob. Required GitHub secrets (public repo) or
+variables (private repo):
 
-| Name | Purpose |
-|------|---------|
-| `GCP_WORKLOAD_IDENTITY_PROVIDER` | GitHub Actions WIF provider |
-| `GCP_SERVICE_ACCOUNT` | CI agent SA (e.g. `gh-actions-tf-azure-export@...`) |
-| `ENTRA_ID_CLIENT_ID` | Entra app for GitHub OIDC |
-| `ENTRA_ID_TENANT_ID` | Entra tenant |
-| `AZURE_SUBSCRIPTION_ID` | Subscription that contains the CI resource group |
-| `AZURE_RESOURCE_GROUP_NAME` | Pre-created sandbox resource group (Owner scoped to this RG) |
+<table>
+  <thead>
+    <tr>
+      <th align="left" style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Name</th>
+      <th align="left" style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>GCP_WORKLOAD_IDENTITY_PROVIDER</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">GitHub Actions WIF provider</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>GCP_SERVICE_ACCOUNT</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">CI agent SA (e.g. <code>gh-actions-tf-azure-export@...</code>)</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>ENTRA_ID_CLIENT_ID</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Entra app for GitHub OIDC</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>ENTRA_ID_TENANT_ID</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Entra tenant</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>AZURE_SUBSCRIPTION_ID</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Subscription that contains the CI resource group</td>
+    </tr>
+    <tr>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;"><code>AZURE_RESOURCE_GROUP_NAME</code></td>
+      <td style="text-align: left; border: 1px solid #d0d7de; padding: 6px 13px;">Pre-created sandbox resource group (Owner scoped to this RG)</td>
+    </tr>
+  </tbody>
+</table>
 
 The CI agent SA must be able to impersonate the stand-in tenant SA
 (`w8s-export-tf-ci-tenant@worklytics-ci.iam.gserviceaccount.com`, shared with GCP export CI). The
