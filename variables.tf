@@ -38,7 +38,7 @@ variable "location" {
     Region for a storage account created by this module. If null, the resource group's location
     is used. Ignored when no account is created.
   EOT
-  default = null
+  default     = null
 }
 
 variable "storage_account_name" {
@@ -47,8 +47,8 @@ variable "storage_account_name" {
     Existing storage account for the export destination. If null, a storage account is created
     in `resource_group_name`.
   EOT
-  default  = null
-  nullable = true
+  default     = null
+  nullable    = true
 
   validation {
     condition     = var.storage_account_name == null || can(regex("^[a-z0-9]{3,24}$", var.storage_account_name))
@@ -66,8 +66,8 @@ variable "storage_container_name" {
     `storage_account_name` and `storage_container_name` skips container creation; the module
     only grants Worklytics access.
   EOT
-  default  = null
-  nullable = true
+  default     = null
+  nullable    = true
 
   validation {
     condition = var.storage_container_name == null || can(regex(
@@ -85,7 +85,7 @@ variable "account_replication_type" {
     account. `LRS` is the default (cost); production durability should use `GRS`, `RAGRS`,
     `GZRS`, or `RAGZRS`. Switching between LRS/GRS/RAGRS and ZRS/GZRS/RAGZRS forces a new account.
   EOT
-  default = "LRS"
+  default     = "LRS"
 
   validation {
     condition     = contains(["LRS", "GRS", "RAGRS", "ZRS", "GZRS", "RAGZRS"], var.account_replication_type)
@@ -99,7 +99,7 @@ variable "infrastructure_encryption_enabled" {
     Double-encrypt a storage account *created* by this module (service + infrastructure keys).
     Can only be set at creation; ignored when reusing an existing account. Default is `true`.
   EOT
-  default = true
+  default     = true
 }
 
 variable "blob_diagnostics" {
@@ -115,8 +115,8 @@ variable "blob_diagnostics" {
     logs to the export account itself. When omitted, compose `azurerm_monitor_diagnostic_setting`
     yourself using `blob_services_resource_id`.
   EOT
-  default  = null
-  nullable = true
+  default     = null
+  nullable    = true
 
   validation {
     condition = var.blob_diagnostics == null || (
@@ -150,7 +150,7 @@ variable "federated_identity_issuer" {
     URL of the external identity provider; must match the issuer claim of the token being
     exchanged. The combination of issuer and subject must be unique on the app.
   EOT
-  default = "https://accounts.google.com"
+  default     = "https://accounts.google.com"
 }
 
 variable "worklytics_host" {

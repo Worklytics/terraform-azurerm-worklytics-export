@@ -76,7 +76,7 @@ mock_provider "azuread" {
 variables {
   worklytics_tenant_id = "123456789012345678901"
   azure_tenant_id      = "11111111-1111-1111-1111-111111111111"
-  resource_group_name = "rg-worklytics-export-test"
+  resource_group_name  = "rg-worklytics-export-test"
 }
 
 run "creates_storage_when_omitted" {
